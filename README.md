@@ -5,7 +5,7 @@ Easily backup all your MySQL databases into a tar file.
 
 ##Usage
 ```
-$ python backups.py --cnf ./mysql.cnf --todir /Path/to/Backups/
+$ python backups.py --mysql ./mysql.cnf --cnf ./config.json
 ```
 
 
@@ -15,4 +15,5 @@ $ python backups.py --cnf ./mysql.cnf --todir /Path/to/Backups/
 
 ###About
 Original script written by: Andrew
+
 http://mcdee.com.au/python-mysql-backup-script/
