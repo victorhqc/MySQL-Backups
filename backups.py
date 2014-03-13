@@ -6,35 +6,50 @@
 # Requires:
 # https://github.com/jbardin/scp.py
 
-# Example: config file
+# Example: mysql config file
 #[client]
 #host = localhost
 #user = root
 #password = root-pass
+#
+# Example: config file (JSON format)
+# {
+# 	"dir": "/", // Target local directory
+# 	"servers": [ // Target servers so receive the backup
+# 		{
+# 			"dir": "/backups/", // Target remote directory
+# 			"host": "server1.com", // IP address or domain
+# 			"user": "root",
+# 			"password": "password",
+# 			"port": 22
+# 		}
+# 	],
+# 	"emails": ["victorhqc@gmail.com"] // Emails to receive notification in case there's a problem with the backup
+# }
 
 from datetime import datetime
-import sys, os, subprocess, tarfile, shutil
+import sys, os, subprocess, tarfile, shutil, json
 
-from paramiko import SSHClient
+from paramiko import SSHClient, AutoAddPolicy
 from scp import SCPClient
 
 def print_usage(script):
-	print 'Usage:', script, '--cnf <config file>', '--todir <directory>'
+	print 'Usage:', script, '--mysql <mysql config file>', '--cnf <config file>'
 	sys.exit(1)
 
 def usage(args):
 	if not len(args) == 5:
 		print_usage(args[0])
 	else:
-		req_args = ['--cnf', '--todir']
+		req_args = ['--mysql', '--cnf']
 		for a in req_args:
 			if not a in req_args:
 				print_usage()
 			if not os.path.exists(args[args.index(a)+1]):
 				print 'Error: Path not found:', args[args.index(a)+1]
 				print_usage()
-	cnf = args[args.index('--cnf')+1]
-	dir = args[args.index('--todir')+1]
+	cnf = args[args.index('--mysql') + 1]
+	dir = args[args.index('--cnf') + 1]
 	return cnf, dir
 
 def mysql_dblist(cnf):
@@ -76,7 +91,7 @@ def mysql_backup(dblist, dir, cnf):
 		if retcode > 0:
 			print 'Error:', db, 'backup error'
 		backup_compress(dir, bfile)
-	return compress_dir(original_dir, bdate)
+	return compress_dir(dir, bdate)
 
 def backup_compress(dir, bfile):
 	tar = tarfile.open(os.path.join(dir, bfile)+'.tar.gz', 'w:gz')
@@ -85,22 +100,38 @@ def backup_compress(dir, bfile):
 	os.remove(os.path.join(dir, bfile))
 
 def compress_dir(dir, bfile):
-	tarf = os.path.join(dir, bfile) + '.tar.gz'
+	tarf = dir + '.tar.gz'
 	tar = tarfile.open(tarf, 'w')
 	tar.add(dir, arcname=bfile)
 	tar.close()
-	shutil.rmtree(os.path.join(dir, bfile))
+	shutil.rmtree(dir)
 
 	return tarf
 
-def backup_to_server(file):
-	
+def backup_to_server(servers, tarfile):
+	ssh = SSHClient()
+	ssh.load_system_host_keys()
+	ssh.set_missing_host_key_policy(AutoAddPolicy())
+	for server in servers:
+		ssh.connect(server['host'], port=server['port'], username=server['user'], password=server['password'])
+
+		# SCPCLient takes a paramiko transport as its only argument
+		scp = SCPClient(ssh.get_transport())
+		scp.put(tarfile, server['dir'])
+
+
+def read_config_file(cnf):
+	f = open(cnf, 'r')
+	string = f.read()
+	js = json.loads(string)
+	return js
 
 def main():
-	cnf, dir = usage(sys.argv)
-	dblist = mysql_dblist(cnf)
-	file = mysql_backup(dblist, dir, cnf)
-	backup_to_server(file)
+	mysql, cnf = usage(sys.argv)
+	js = read_config_file(cnf)
+	dblist = mysql_dblist(mysql)
+	f = mysql_backup(dblist, js['dir'], mysql)
+	backup_to_server(js['servers'], f)
 
 if __name__ == '__main__':
 	main()

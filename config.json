@@ -1,0 +1,13 @@
+{
+	"dir": "/some/path/",
+	"servers": [
+		{
+			"dir": "/backups/",
+			"host": "127.0.0.1",
+			"user": "root",
+			"password": "password",
+			"port": 22
+		}
+	],
+	"emails": ["victorhqc@gmail.com"]
+}
