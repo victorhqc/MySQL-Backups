@@ -28,7 +28,7 @@
 # }
 
 from datetime import datetime
-import sys, os, subprocess, tarfile, shutil, json
+import sys, os, subprocess, tarfile, shutil, json, time
 
 from paramiko import SSHClient, AutoAddPolicy
 from scp import SCPClient
@@ -38,16 +38,26 @@ def print_usage(script):
 	sys.exit(1)
 
 def usage(args):
+	default_args = {'--mysql': './mysql.cnf', '--cnf': './config.json'}
+	req_args = ['--mysql', '--cnf']
+
+	# Add default values in case they are not defined
+	for a in default_args:
+		if not a in args:
+			args.append(a)
+			args.append(default_args[a])
+	
+	print args
+
 	if not len(args) == 5:
 		print_usage(args[0])
-	else:
-		req_args = ['--mysql', '--cnf']
-		for a in req_args:
-			if not a in req_args:
-				print_usage()
-			if not os.path.exists(args[args.index(a)+1]):
-				print 'Error: Path not found:', args[args.index(a)+1]
-				print_usage()
+	
+	for a in req_args:
+		if not a in req_args:
+			print_usage()
+		if not os.path.exists(args[args.index(a)+1]):
+			print 'Error: Path not found:', args[args.index(a)+1]
+			print_usage()
 	cnf = args[args.index('--mysql') + 1]
 	dir = args[args.index('--cnf') + 1]
 	return cnf, dir
