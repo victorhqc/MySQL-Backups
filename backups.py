@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 # Original Author: Andrew McDonald andrew@mcdee.com.au http://mcdee.com.au
 # Modified by: Victor Hugo Quiroz Castro victorhqc@gmail.com http://victorhqc.com
@@ -34,33 +34,32 @@ from paramiko import SSHClient, AutoAddPolicy
 from scp import SCPClient
 
 def print_usage(script):
-	print 'Usage:', script, '--mysql <mysql config file>', '--cnf <config file>'
+	print 'Usage:', script, '--service <true|false> --mysql <mysql config file>', '--cnf <config file>'
 	sys.exit(1)
 
 def usage(args):
-	default_args = {'--mysql': './mysql.cnf', '--cnf': './config.json'}
-	req_args = ['--mysql', '--cnf']
+	default_args = {'--service': 'true', '--mysql': './mysql.cnf', '--cnf': './config.json'}
+	req_args = ['--service', '--mysql', '--cnf']
 
 	# Add default values in case they are not defined
 	for a in default_args:
 		if not a in args:
 			args.append(a)
 			args.append(default_args[a])
-	
-	print args
 
-	if not len(args) == 5:
+	if not len(args) == 7:
 		print_usage(args[0])
 	
 	for a in req_args:
 		if not a in req_args:
 			print_usage()
-		if not os.path.exists(args[args.index(a)+1]):
+		if a != '--service' and not os.path.exists(args[args.index(a)+1]):
 			print 'Error: Path not found:', args[args.index(a)+1]
 			print_usage()
+	service = args[args.index('--service') + 1]
 	cnf = args[args.index('--mysql') + 1]
 	dir = args[args.index('--cnf') + 1]
-	return cnf, dir
+	return service, cnf, dir
 
 def mysql_dblist(cnf):
 	no_backup = ['Database', 'information_schema', 'performance_schema', 'test']
@@ -136,12 +135,27 @@ def read_config_file(cnf):
 	js = json.loads(string)
 	return js
 
-def main():
-	mysql, cnf = usage(sys.argv)
+def tasks(mysql, cnf):
 	js = read_config_file(cnf)
 	dblist = mysql_dblist(mysql)
 	f = mysql_backup(dblist, js['dir'], mysql)
 	backup_to_server(js['servers'], f)
 
+def main():
+	service, mysql, cnf = usage(sys.argv)
+
+	if(service == True or service == 'true' or service == 'True'):
+		delay_time = 60 * 60 * 24 # Time in seconds (24 hour delay)
+		# Infinite loop
+		while True:
+			tasks(mysql, cnf)
+			time.sleep(delay_time)
+	else:
+		tasks(mysql, cnf)
+
 if __name__ == '__main__':
-	main()
+	try:
+		main()
+	except KeyboardInterrupt:
+		print >> sys.stderr, '\nExiting by user request.\n'
+        sys.exit(0)
