@@ -81,7 +81,7 @@ def mysql_dblist(cnf):
 	return dblist
 
 def mysql_backup(dblist, dir, cnf):
-	bdate = datetime.now().strftime('%Y-%m-%d.%H:%M')
+	bdate = datetime.now().strftime('%Y-%m-%d.%H.%M')
 	original_dir = dir
 	dir += bdate
 	if not os.path.exists(dir):
